@@ -7,16 +7,19 @@ import com.finbank.auth_service.repository.UserRepository;
 import com.finbank.auth_service.service.UserService;
 import org.springframework.stereotype.Service;
 import com.finbank.auth_service.exception.DuplicateEmailException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Service
 
 public class UserServiceImpl implements UserService{
     private final UserRepository userRepository;
-
+    private final PasswordEncoder passwordEncoder;
     /* constructor injection */
 
-    public UserServiceImpl(UserRepository userRepository){
+    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder)
+    {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -35,7 +38,10 @@ public class UserServiceImpl implements UserService{
 
         user.setEmail(request.getEmail());
 
-        user.setPassword(request.getPassword());
+        String encodedPassword =
+                passwordEncoder.encode(request.getPassword());
+
+        user.setPassword(encodedPassword);
 
         User savedUser = userRepository.save(user);
 
