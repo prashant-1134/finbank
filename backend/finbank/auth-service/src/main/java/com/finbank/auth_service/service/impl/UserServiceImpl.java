@@ -2,6 +2,7 @@ package com.finbank.auth_service.service.impl;
 
 import com.finbank.auth_service.dto.UserRequest;
 import com.finbank.auth_service.dto.UserResponse;
+import com.finbank.auth_service.entity.Role;
 import com.finbank.auth_service.entity.User;
 import com.finbank.auth_service.repository.UserRepository;
 import com.finbank.auth_service.service.UserService;
@@ -42,6 +43,8 @@ public class UserServiceImpl implements UserService{
                 passwordEncoder.encode(request.getPassword());
 
         user.setPassword(encodedPassword);
+
+        user.setRole(Role.USER);
 
         User savedUser = userRepository.save(user);
 
