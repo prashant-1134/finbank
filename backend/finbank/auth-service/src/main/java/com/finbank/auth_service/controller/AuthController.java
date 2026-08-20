@@ -6,6 +6,8 @@ import com.finbank.auth_service.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.finbank.auth_service.dto.RefreshTokenRequest;
+import com.finbank.auth_service.dto.RefreshTokenResponse;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -23,5 +25,14 @@ public class AuthController {
         LoginResponse response  = authService.login(request);
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<RefreshTokenResponse> refreshToken(
+            @RequestBody RefreshTokenRequest request
+    ) {
+        return ResponseEntity.ok(
+                authService.refreshAccessToken(request)
+        );
     }
 }

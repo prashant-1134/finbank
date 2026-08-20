@@ -9,21 +9,28 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.finbank.auth_service.security.JwtService;
 import com.finbank.auth_service.exception.InvalidCredentialsException;
+import com.finbank.auth_service.entity.RefreshToken;
+import com.finbank.auth_service.service.RefreshTokenService;
+import com.finbank.auth_service.dto.RefreshTokenRequest;
+import com.finbank.auth_service.dto.RefreshTokenResponse;
 
 @Service
 public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthServiceImpl(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
-            JwtService jwtService
+            JwtService jwtService,
+            RefreshTokenService refreshTokenService
     ){
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Override
@@ -47,10 +54,34 @@ public class AuthServiceImpl implements AuthService {
             );
         }
 
-        String token = jwtService.generateToken(user.getEmail(),
+        String accessToken = jwtService.generateToken(user.getEmail(),
                 user.getRole().name());
 
-        return new LoginResponse(token, "Bearer");
+        RefreshToken refreshToken =
+                refreshTokenService.createRefreshToken(user);
+
+        return new LoginResponse(accessToken, refreshToken.getToken(), "Bearer");
+    }
+
+    @Override
+    public RefreshTokenResponse refreshAccessToken(
+            RefreshTokenRequest request
+    ){
+        RefreshToken refreshToken =  refreshTokenService.verifyRefreshToken(request.getRefreshToken());
+
+
+
+        User user = refreshToken.getUser();
+
+        String accessToken = jwtService.generateToken(
+                user.getEmail(),
+                user.getRole().name()
+        );
+
+        return new RefreshTokenResponse(
+                accessToken,
+                "Bearer"
+        );
     }
 
 
