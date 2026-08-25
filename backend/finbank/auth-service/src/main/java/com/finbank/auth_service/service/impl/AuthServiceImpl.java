@@ -84,5 +84,10 @@ public class AuthServiceImpl implements AuthService {
         );
     }
 
+    @Override
+    public void logout(String refreshToken){
+        refreshTokenService.revokeRefreshToken(refreshToken);
+    }
+
 
 }
