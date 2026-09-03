@@ -67,26 +67,52 @@ public class AuthServiceImpl implements AuthService {
     public RefreshTokenResponse refreshAccessToken(
             RefreshTokenRequest request
     ){
-        RefreshToken refreshToken =  refreshTokenService.verifyRefreshToken(request.getRefreshToken());
+
+        // 1. verify the old refresh token
+        RefreshToken oldRefreshToken =  refreshTokenService.verifyRefreshToken(request.getRefreshToken());
 
 
+        // 2. get the use from the old refresh token
+        User user = oldRefreshToken.getUser();
 
-        User user = refreshToken.getUser();
+        // 3. Revoke the old refresh token
+        refreshTokenService.revokeRefreshToken(
+                oldRefreshToken.getToken()
+        );
 
+        //4. create a new refresh token
+        RefreshToken newRefreshToken =
+                refreshTokenService.createRefreshToken(user);
+
+        //5. generate new access token
         String accessToken = jwtService.generateToken(
                 user.getEmail(),
                 user.getRole().name()
         );
 
+
+        //6. return both refresh token as well as access token
         return new RefreshTokenResponse(
                 accessToken,
+                newRefreshToken.getToken(),
                 "Bearer"
         );
     }
 
     @Override
-    public void logout(String refreshToken){
+    public void logout(String refreshToken)
+    {
+
         refreshTokenService.revokeRefreshToken(refreshToken);
+    }
+
+    @Override
+    public void logoutAll(String email){
+        User user =  userRepository.findByEmail(email)
+                .orElseThrow(()->
+                        new InvalidCredentialsException("User Not Found"));
+
+        refreshTokenService.revokeAllRefreshToken(user.getId());
     }
 
 

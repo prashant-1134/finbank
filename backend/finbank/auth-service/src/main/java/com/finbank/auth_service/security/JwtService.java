@@ -5,6 +5,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import java.util.UUID;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
@@ -32,6 +33,7 @@ public class JwtService {
         );
 
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(email)
                 .claim("role", role)
                 .issuedAt(now)
@@ -56,8 +58,18 @@ public class JwtService {
     public boolean isTokenValid(String token, String username){
         String extractedUsername = extractUsername(token);
 
-        return extractedUsername.equals(username)
-                && !isTokenExpired(token);
+        return extractedUsername.equals(username) && !isTokenExpired(token);
+    }
+
+    public boolean isTokenValid(String token){
+        try{
+            extractAllClaims(token);
+            return true;
+        }
+        catch(Exception e){
+            return false;
+        }
+
     }
 
     private boolean isTokenExpired(String token){
@@ -65,6 +77,10 @@ public class JwtService {
                 .getExpiration();
 
         return expiration.before(new Date());
+    }
+
+    public String extractTokenId(String token){
+        return extractAllClaims(token).getId();
     }
 }
 

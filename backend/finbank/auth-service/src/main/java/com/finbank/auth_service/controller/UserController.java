@@ -8,7 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
-
+import com.finbank.auth_service.dto.ProfileUpdateRequest;
+import com.finbank.auth_service.dto.ChangePasswordRequest;
 @RestController
 @RequestMapping("/api/users")
 public class UserController{
@@ -29,12 +30,41 @@ public class UserController{
     }
 
     @GetMapping("/me")
-    public ResponseEntity<String> getCurrentUser(
+    public ResponseEntity<UserResponse> getCurrentUser(
             Authentication authentication
     ) {
-        return ResponseEntity.ok(
-                "Logged in as: " + authentication.getName()
-        );
+//        return ResponseEntity.ok(
+//                "Logged in as: " + authentication.getName()
+//        );
+
+        UserResponse response = userService.getCurrentUser(authentication.getName());
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<UserResponse> updateProfile(
+            Authentication authentication,
+            @Valid @RequestBody ProfileUpdateRequest request
+    ) {
+
+        UserResponse response =
+                userService.updateProfile(
+                        authentication.getName(),
+                        request
+                );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("change-password")
+    public ResponseEntity<Void> changePassword(
+            Authentication authentication,
+            @Valid @RequestBody ChangePasswordRequest request
+    ){
+        userService.changePassword(authentication.getName(), request);
+
+        return ResponseEntity.noContent().build();
     }
 
 

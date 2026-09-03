@@ -7,7 +7,7 @@ import com.finbank.auth_service.service.RefreshTokenService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.finbank.auth_service.exception.InvalidRefreshTokenException;
-
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -71,4 +71,10 @@ public class RefreshTokenServiceImpl implements RefreshTokenService{
 
         refreshTokenRepository.save(refreshToken);
     }
+
+        @Override
+        @Transactional
+        public void revokeAllRefreshToken(Long userId){
+            refreshTokenRepository.revokeAllByUserId(userId);
+        }
 }
