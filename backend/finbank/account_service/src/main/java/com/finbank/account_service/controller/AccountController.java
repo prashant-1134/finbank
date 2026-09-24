@@ -8,6 +8,9 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.finbank.account_service.dto.DepositRequest;
+import com.finbank.account_service.dto.WithdrawRequest;
+import com.finbank.account_service.dto.TransferRequest;
 
 @RestController
 @RequestMapping("/api/accounts")
@@ -16,6 +19,7 @@ public class AccountController{
     private final AccountService accountService;
 
     public AccountController(AccountService accountService){
+
         this.accountService = accountService;
     }
 
@@ -38,5 +42,35 @@ public class AccountController{
         return ResponseEntity.ok(
                 accountService.getAccount(accountNumber)
         );
+    }
+
+    @PostMapping("/{accountNumber}/deposit")
+    public ResponseEntity<AccountResponse> deposit(
+            @PathVariable String accountNumber,
+            @Valid @RequestBody DepositRequest request
+    ){
+        AccountResponse response = accountService.deposit(accountNumber, request);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{accountNumber}/withdraw")
+    public ResponseEntity<AccountResponse> withdraw(
+            @PathVariable String accountNumber,
+            @Valid @RequestBody WithdrawRequest request
+    ){
+        AccountResponse response = accountService.withdraw(accountNumber, request);
+
+        return ResponseEntity.ok(response);
+
+    }
+
+    @PostMapping("/transfer")
+    public ResponseEntity<AccountResponse> transfer(
+            @Valid @RequestBody TransferRequest request
+    ){
+        AccountResponse response = accountService.transfer(request);
+
+        return ResponseEntity.ok(response);
     }
 }
