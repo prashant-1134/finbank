@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.*;
 import com.finbank.account_service.dto.DepositRequest;
 import com.finbank.account_service.dto.WithdrawRequest;
 import com.finbank.account_service.dto.TransferRequest;
+import com.finbank.account_service.dto.TransactionResponse;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/accounts")
@@ -39,8 +42,10 @@ public class AccountController{
     public ResponseEntity<AccountResponse> getAccount(
             @PathVariable String accountNumber
     ){
+
+        AccountResponse response = accountService.getAccount(accountNumber);
         return ResponseEntity.ok(
-                accountService.getAccount(accountNumber)
+                response
         );
     }
 
@@ -72,5 +77,15 @@ public class AccountController{
         AccountResponse response = accountService.transfer(request);
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{accountNumber}/transactions")
+    public ResponseEntity<List<TransactionResponse>> getTransactionHistory(
+            @PathVariable String accountNumber
+    ){
+        List<TransactionResponse> transactions =
+                accountService.getTransactionHistory(accountNumber);
+
+        return ResponseEntity.ok(transactions);
     }
 }

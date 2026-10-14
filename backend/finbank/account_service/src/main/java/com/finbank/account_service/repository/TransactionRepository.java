@@ -6,5 +6,5 @@ import com.finbank.account_service.entity.Transaction;
 import java.util.List;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Long>{
-    List<Transaction> FindByOrderIdOrderByCreatedAtDesc(Long accountId);
+    List<Transaction> findByAccountIdOrderByCreatedAtDesc(Long accountId);
 }

@@ -29,6 +29,6 @@ public class Transaction{
     private String relatedAccountNumber;
 
     @Column(nullable = false)
-    private LocalDateTime createAt;
+    private LocalDateTime createdAt;
 
 }

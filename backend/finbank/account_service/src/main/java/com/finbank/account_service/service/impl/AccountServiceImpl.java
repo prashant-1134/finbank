@@ -4,21 +4,30 @@ import com.finbank.account_service.dto.*;
 import com.finbank.account_service.entity.*;
 import com.finbank.account_service.repository.*;
 import com.finbank.account_service.service.*;
-
-
-import org.springframework.stereotype.Service;
+import com.finbank.account_service.entity.Transaction;
+import com.finbank.account_service.entity.TransactionType;
 import org.springframework.transaction.annotation.Transactional;
-
+import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.UUID;
+import java.util.List;
+import java.time.LocalDateTime;
+import com.finbank.account_service.exception.AccountNotFoundException;
+import com.finbank.account_service.exception.InsufficientBalanceException;
+import com.finbank.account_service.exception.InactiveAccountException;
+import com.finbank.account_service.exception.InvalidTransferException;
 
 @Service
 public class AccountServiceImpl implements AccountService{
 
     private final AccountRepository accountRepository;
 
-    public AccountServiceImpl(AccountRepository accountRepository){
+    private final TransactionRepository transactionRepository;
+
+    public AccountServiceImpl(AccountRepository accountRepository,
+                              TransactionRepository transactioRepository){
         this.accountRepository = accountRepository;
+        this.transactionRepository = transactioRepository;
     }
 
     @Override
@@ -49,7 +58,7 @@ public class AccountServiceImpl implements AccountService{
          Account account = accountRepository.
                  findByAccountNumber(accountNumber)
                 .orElseThrow(()->
-                        new RuntimeException("Account Not found")
+                        new AccountNotFoundException("Account Not found")
                 );
 
          return new AccountResponse(
@@ -64,14 +73,15 @@ public class AccountServiceImpl implements AccountService{
     }
 
     @Override
+    @Transactional
     public AccountResponse deposit(String accountnumber, DepositRequest request){
         Account account = accountRepository.
                 findByAccountNumber(accountnumber)
                 .orElseThrow(()->
-                        new RuntimeException("Account not found"));
+                        new AccountNotFoundException("Account not found"));
 
         if(account.getStatus() != AccountStatus.ACTIVE){
-            throw new RuntimeException("Account is not active");
+            throw new InactiveAccountException("Account is not active");
         }
 
         account.setBalance(
@@ -79,6 +89,17 @@ public class AccountServiceImpl implements AccountService{
         );
 
         Account savedAccount = accountRepository.save(account);
+
+        Transaction transaction = new Transaction();
+
+        transaction.setAccountId(savedAccount.getId());
+        transaction.setType(TransactionType.DEPOSIT);
+        transaction.setAmount(request.getAmount());
+        transaction.setRelatedAccountNumber(null);
+        transaction.setCreatedAt(LocalDateTime.now());
+
+        transactionRepository.save(transaction);
+
 
         return new AccountResponse(
                 savedAccount.getId(),
@@ -90,27 +111,38 @@ public class AccountServiceImpl implements AccountService{
     }
 
     @Override
+    @Transactional
     public AccountResponse withdraw(String accountNumber, WithdrawRequest request){
         Account account = accountRepository
                 .findByAccountNumber(accountNumber)
                 .orElseThrow(
-                        ()->new RuntimeException("Account Not found")
+                        ()->new AccountNotFoundException("Account Not found")
                 );
 
         if(account.getStatus() != AccountStatus.ACTIVE){
-            throw new RuntimeException("Account is not active");
+            throw new InactiveAccountException("Account is not active");
         }
 
         /*Now we will check if we have sufficient amount to withdraw*/
 
         if(account.getBalance().compareTo(request.getAmount()) < 0){
-            throw new RuntimeException("Amount is insufficient");
+            throw new InsufficientBalanceException("Insufficient balance");
 
         }
 
         account.setBalance(account.getBalance().subtract(request.getAmount()));
 
         Account savedAccount = accountRepository.save(account);
+
+        Transaction transaction = new Transaction();
+
+        transaction.setAccountId(savedAccount.getId());
+        transaction.setType(TransactionType.WITHDRAW);
+        transaction.setAmount(request.getAmount());
+        transaction.setRelatedAccountNumber(null);
+        transaction.setCreatedAt(LocalDateTime.now());
+
+        transactionRepository.save(transaction);
 
 
         return new AccountResponse(
@@ -130,34 +162,34 @@ public class AccountServiceImpl implements AccountService{
 
         /*Check if to account and from account is not the same */
         if (request.getFromAccount().equals(request.getToAccount())) {
-            throw new RuntimeException("From and TO account can't be same");
+            throw new InvalidTransferException("From and TO account can't be same");
         }
 
         /*check if from account exist*/
 
         Account fromAccount = accountRepository.findByAccountNumber(request.getFromAccount())
                 .orElseThrow(() ->
-                        new RuntimeException("Source account is not found"));
+                        new AccountNotFoundException("Source account is not found"));
 
         /*check if destination account exist*/
 
         Account toAccount = accountRepository.findByAccountNumber(request.getToAccount())
                 .orElseThrow(() ->
-                        new RuntimeException("Dest account is not found"));
+                        new AccountNotFoundException("Dest account is not found"));
 
         /*Check if both the account's are active*/
         if (fromAccount.getStatus() != AccountStatus.ACTIVE) {
-            throw new RuntimeException("From account is not active");
+            throw new InactiveAccountException("Src Account is not active");
         }
 
         if (toAccount.getStatus() != AccountStatus.ACTIVE) {
-            throw new RuntimeException("To account is not active");
+            throw new InactiveAccountException("Dest Account is not active");
         }
 
         // check if transfer amt is less than  balance
 
         if(fromAccount.getBalance().compareTo(request.getAmount()) < 0){
-            throw new RuntimeException("Balance in the from account is not sufficient");
+            throw new InsufficientBalanceException("Insufficient balance in source account for transfer");
         }
 
         /*All condition are satisfied so process the balance transfer*/
@@ -171,6 +203,30 @@ public class AccountServiceImpl implements AccountService{
 
         accountRepository.save(toAccount);
 
+        /*Below code added for recording the trasaction history*/
+
+        Transaction sentTransaction = new Transaction();
+
+        sentTransaction.setAccountId(fromAccount.getId());
+        sentTransaction.setType(TransactionType.TRANSFER_SENT);
+        sentTransaction.setAmount(request.getAmount());
+        sentTransaction.setRelatedAccountNumber(toAccount.getAccountNumber());
+        sentTransaction.setCreatedAt(LocalDateTime.now());
+
+        transactionRepository.save(sentTransaction);
+
+        // recieve transaction
+
+        Transaction recTransaction = new Transaction();
+
+        recTransaction.setAccountId(toAccount.getId());
+        recTransaction.setType(TransactionType.TRNASFER_RECEIVE);
+        recTransaction.setAmount(request.getAmount());
+        recTransaction.setRelatedAccountNumber(fromAccount.getAccountNumber());
+        recTransaction.setCreatedAt(LocalDateTime.now());
+
+        transactionRepository.save(recTransaction);
+
         return new AccountResponse(
                 fromAccount.getId(),
                 fromAccount.getAccountNumber(),
@@ -178,6 +234,34 @@ public class AccountServiceImpl implements AccountService{
                 fromAccount.getBalance(),
                 fromAccount.getStatus()
         );
+    }
+
+    @Override
+    public List<TransactionResponse> getTransactionHistory(
+            String accountNumber
+    ) {
+        Account account = accountRepository
+                .findByAccountNumber(accountNumber)
+        .orElseThrow(() ->
+                new AccountNotFoundException("Account Not found")
+        );
+
+        List<Transaction> transactions  =
+                transactionRepository.findByAccountIdOrderByCreatedAtDesc(
+                        account.getId()
+                );
+
+        return transactions.stream()
+                .map((transaction) ->
+                        new TransactionResponse(
+                                transaction.getId(),
+                                transaction.getType(),
+                                transaction.getAmount(),
+                                transaction.getRelatedAccountNumber(),
+                                transaction.getCreatedAt()
+                        )
+                )
+                .toList();
     }
 
 
