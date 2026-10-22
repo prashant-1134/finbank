@@ -12,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.beans.BeanProperty;
 
@@ -51,6 +52,12 @@ public class SecurityConfig {
                 )
 
                 .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((request, response, authException) ->
+                                response.sendError(
+                                        HttpServletResponse.SC_UNAUTHORIZED,
+                                        "Unauthorized"
+                                )
+                        )
                         .accessDeniedHandler(customAccessDeniedHandler)
                 )
 
